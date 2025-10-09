@@ -1,25 +1,68 @@
 version: '3.8'
 
 services:
-  recicla-coleta:
-    image: recicla-coleta:latest
+  # Banco de Dados PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: recicla-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: recicla_user
+      POSTGRES_PASSWORD: recicla_pass_2024
+      POSTGRES_DB: recicla_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - recicla-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recicla_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API (Node.js + Express)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: recicla-backend
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://recicla_user:recicla_pass_2024@postgres:5432/recicla_db
+      - JWT_SECRET=seu_jwt_secret_super_seguro_aqui_mude_em_producao
+      - PORT=3000
+      - FRONTEND_URL=http://appcoleta.polygonconsulting.com.br
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - recicla-network
+    volumes:
+      - ./uploads:/app/uploads
+
+  # Frontend (React + Nginx)
+  frontend:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: recicla-frontend
     restart: unless-stopped
     ports:
       - "3001:80"
     environment:
-      - NODE_ENV=production
-    deploy:
-      replicas: 1
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
+      - REACT_APP_API_URL=http://appcoleta.polygonconsulting.com.br/api
+    depends_on:
+      - backend
+    networks:
+      - recicla-network
 
 networks:
-  default:
+  recicla-network:
     driver: bridge
 
+volumes:
+  postgres_data:
+    driver: local

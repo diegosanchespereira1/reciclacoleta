@@ -1,0 +1,27 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Instalar dependências do sistema
+RUN apk add --no-cache openssl
+
+# Copiar package files
+COPY backend/package*.json ./
+
+# Instalar dependências
+RUN npm ci --only=production
+
+# Copiar código do backend
+COPY backend/ .
+
+# Gerar Prisma Client
+RUN npx prisma generate
+
+# Criar diretório de uploads
+RUN mkdir -p uploads
+
+# Expor porta
+EXPOSE 3000
+
+# Script de inicialização
+CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]

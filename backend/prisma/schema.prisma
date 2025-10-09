@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  name          String
+  password      String
+  role          String   // 'admin' ou 'collector'
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  collections   CollectionItem[]
+  points        UserPoints?
+  transactions  PointsTransaction[]
+
+  @@map("users")
+}
+
+model CollectionPoint {
+  id          String   @id @default(uuid())
+  name        String
+  address     String
+  latitude    Float?
+  longitude   Float?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  collections CollectionItem[]
+
+  @@map("collection_points")
+}
+
+model CollectionItem {
+  id                   String   @id @default(uuid())
+  type                 String   // 'papel', 'plastico', 'vidro', 'metal', 'organico'
+  weight               Float
+  location             String
+  collectionPointId    String?
+  collectionPointName  String?
+  collectorId          String
+  collectorName        String
+  collectedAt          DateTime @default(now())
+  status               String   // 'collected', 'processed', 'disposed'
+  qrCode               String   @unique
+  trackingId           String   @unique
+  photoUrl             String?
+  photoHash            String?
+  blockchainHash       String?
+  points               Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  collector            User     @relation(fields: [collectorId], references: [id], onDelete: Cascade)
+  collectionPoint      CollectionPoint? @relation(fields: [collectionPointId], references: [id])
+  trackingHistory      TrackingEvent[]
+
+  @@map("collection_items")
+}
+
+model TrackingEvent {
+  id                   String   @id @default(uuid())
+  collectionId         String
+  stage                String   // 'collected', 'processing', 'shipped_to_industry', 'completed'
+  timestamp            DateTime @default(now())
+  location             String
+  responsiblePerson    String
+  responsiblePersonId  String
+  notes                String?
+  photoUrl             String?
+  photoHash            String?
+  blockchainHash       String?
+  weight               Float?
+  
+  collection           CollectionItem @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@map("tracking_events")
+}
+
+model UserPoints {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  totalPoints     Int      @default(0)
+  level           String   @default("Iniciante")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_points")
+}
+
+model PointsTransaction {
+  id              String   @id @default(uuid())
+  userId          String
+  collectionId    String
+  points          Int
+  type            String   // 'earned', 'bonus', 'redeemed'
+  description     String
+  createdAt       DateTime @default(now())
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("points_transactions")
+}
+
+model BlockchainRecord {
+  id              String   @id @default(uuid())
+  hash            String   @unique
+  previousHash    String?
+  timestamp       DateTime @default(now())
+  collectionId    String
+  eventId         String
+  stage           String
+  weight          Float
+  location        String
+  responsiblePerson String
+  photoHash       String?
+  nonce           Int
+  createdAt       DateTime @default(now())
+
+  @@map("blockchain_records")
+}

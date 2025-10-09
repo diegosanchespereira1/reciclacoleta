@@ -1,25 +1,36 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { AuthProvider } from './contexts/AuthContext';
+import AppRouter from './components/AppRouter';
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#2e7d32',
+      light: '#4caf50',
+      dark: '#1b5e20',
+    },
+    secondary: {
+      main: '#ff9800',
+    },
+    background: {
+      default: '#f5f5f5',
+    },
+  },
+  typography: {
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+  },
+});
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <AppRouter />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

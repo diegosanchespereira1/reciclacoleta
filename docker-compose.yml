@@ -1,0 +1,16 @@
+services:
+  recicla-coleta:
+    build: .
+    container_name: recicla-coleta-app
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    networks:
+      - webnet
+    environment:
+      - NODE_ENV=production
+
+networks:
+  webnet:
+    driver: bridge
+

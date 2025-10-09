@@ -1,16 +1,25 @@
+version: '3.8'
+
 services:
   recicla-coleta:
-    build: .
-    container_name: recicla-coleta-app
+    image: recicla-coleta:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - "3001:80"
-    networks:
-      - webnet
     environment:
       - NODE_ENV=production
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
 networks:
-  webnet:
+  default:
     driver: bridge
 

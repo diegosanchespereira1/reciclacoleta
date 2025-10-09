@@ -28,13 +28,19 @@ export class DatabaseService {
   }
 
   // Collection operations
-  static async createCollection(collection: Omit<CollectionItem, 'id' | 'collectedAt' | 'qrCode'>): Promise<CollectionItem> {
+  static async createCollection(collection: Omit<CollectionItem, 'id' | 'collectedAt' | 'qrCode' | 'trackingId' | 'points' | 'trackingHistory' | 'blockchainHash' | 'photoUrl' | 'photoHash'>): Promise<CollectionItem> {
     const collections = this.getCollections();
     const newCollection: CollectionItem = {
       ...collection,
       id: crypto.randomUUID(),
       collectedAt: new Date(),
       qrCode: crypto.randomUUID(),
+      trackingId: '',
+      points: 0,
+      trackingHistory: [],
+      blockchainHash: undefined,
+      photoUrl: undefined,
+      photoHash: undefined,
     };
     
     collections.push(newCollection);
@@ -57,6 +63,27 @@ export class DatabaseService {
     const index = collections.findIndex(collection => collection.id === id);
     if (index !== -1) {
       collections[index].status = status;
+      localStorage.setItem(`${DB_PREFIX}collections`, JSON.stringify(collections));
+    }
+  }
+
+  static async updateCollectionWithTracking(collection: CollectionItem): Promise<void> {
+    const collections = this.getCollections();
+    const index = collections.findIndex(c => c.id === collection.id);
+    if (index !== -1) {
+      collections[index] = collection;
+      localStorage.setItem(`${DB_PREFIX}collections`, JSON.stringify(collections));
+    }
+  }
+
+  static async addTrackingEvent(collectionId: string, event: any): Promise<void> {
+    const collections = this.getCollections();
+    const index = collections.findIndex(collection => collection.id === collectionId);
+    if (index !== -1) {
+      if (!collections[index].trackingHistory) {
+        collections[index].trackingHistory = [];
+      }
+      collections[index].trackingHistory.push(event);
       localStorage.setItem(`${DB_PREFIX}collections`, JSON.stringify(collections));
     }
   }
@@ -117,6 +144,36 @@ export class DatabaseService {
           collectorName: collectorUser.name,
           status: 'disposed'
         });
+
+        // Adicionar dados de rastreamento aos exemplos
+        const collections = this.getCollections();
+        collections.forEach(collection => {
+          const updatedCollection = {
+            ...collection,
+            trackingId: `TRK-${Date.now()}-${Math.random().toString(36).substring(2)}`,
+            photoUrl: undefined,
+            photoHash: undefined,
+            points: collection.weight * 10, // Pontos simples para exemplo
+            trackingHistory: [{
+              id: crypto.randomUUID(),
+              collectionId: collection.id,
+              stage: 'collected' as const,
+              timestamp: collection.collectedAt,
+              location: collection.location,
+              responsiblePerson: collection.collectorName,
+              responsiblePersonId: collection.collectorId,
+              notes: 'Coleta inicial de exemplo',
+              weight: collection.weight
+            }]
+          };
+          
+          const index = collections.findIndex(c => c.id === collection.id);
+          if (index !== -1) {
+            collections[index] = updatedCollection;
+          }
+        });
+        
+        localStorage.setItem(`${DB_PREFIX}collections`, JSON.stringify(collections));
       }
     }
   }

@@ -6,13 +6,16 @@ import Dashboard from './Dashboard';
 import CollectionForm from './CollectionForm';
 import CollectionPointForm from './CollectionPointForm';
 import CollectionPointsList from './CollectionPointsList';
+import Reports from './Reports';
+import CollectionDetails from './CollectionDetails';
 import { CircularProgress, Box } from '@mui/material';
 
-type View = 'login' | 'register' | 'dashboard' | 'collection-form' | 'collection-point-form' | 'collection-points-list';
+type View = 'login' | 'register' | 'dashboard' | 'collection-form' | 'collection-point-form' | 'collection-points-list' | 'reports' | 'collection-details';
 
 const AppRouter: React.FC = () => {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState<View>('login');
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
 
   if (loading) {
     return (
@@ -45,6 +48,11 @@ const AppRouter: React.FC = () => {
         <Dashboard 
           onNewCollection={() => setCurrentView('collection-form')}
           onCollectionPoints={() => setCurrentView('collection-points-list')}
+          onReports={() => setCurrentView('reports')}
+          onCollectionDetails={(collectionId) => {
+            setSelectedCollectionId(collectionId);
+            setCurrentView('collection-details');
+          }}
         />
       );
     case 'collection-form':
@@ -58,11 +66,25 @@ const AppRouter: React.FC = () => {
           onNewPoint={() => setCurrentView('collection-point-form')}
         />
       );
+    case 'reports':
+      return <Reports onBack={() => setCurrentView('dashboard')} />;
+    case 'collection-details':
+      return (
+        <CollectionDetails 
+          collectionId={selectedCollectionId}
+          onBack={() => setCurrentView('dashboard')}
+        />
+      );
     default:
       return (
         <Dashboard 
           onNewCollection={() => setCurrentView('collection-form')}
           onCollectionPoints={() => setCurrentView('collection-points-list')}
+          onReports={() => setCurrentView('reports')}
+          onCollectionDetails={(collectionId) => {
+            setSelectedCollectionId(collectionId);
+            setCurrentView('collection-details');
+          }}
         />
       );
   }

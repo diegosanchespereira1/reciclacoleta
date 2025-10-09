@@ -26,7 +26,9 @@ import {
   LocalDrink as PlasticIcon,
   WineBar as GlassIcon,
   Build as MetalIcon,
-  Restaurant as OrganicIcon
+  Restaurant as OrganicIcon,
+  Assessment as AssessmentIcon,
+  Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { CollectionStats } from '../types';
@@ -37,9 +39,11 @@ import { ptBR } from 'date-fns/locale';
 interface DashboardProps {
   onNewCollection: () => void;
   onCollectionPoints: () => void;
+  onReports: () => void;
+  onCollectionDetails: (collectionId: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onNewCollection, onCollectionPoints }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onNewCollection, onCollectionPoints, onReports, onCollectionDetails }) => {
   const { user, logout } = useAuth();
   const [stats, setStats] = useState<CollectionStats | null>(null);
 
@@ -124,9 +128,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewCollection, onCollectionPoin
             color="inherit"
             startIcon={<LocationOnIcon />}
             onClick={onCollectionPoints}
-            sx={{ mr: 2 }}
+            sx={{ mr: 1 }}
           >
             Pontos de Coleta
+          </Button>
+          <Button
+            color="inherit"
+            startIcon={<AssessmentIcon />}
+            onClick={onReports}
+            sx={{ mr: 2 }}
+          >
+            Relatórios
           </Button>
           <IconButton color="inherit" onClick={logout}>
             <LogoutIcon />
@@ -276,6 +288,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewCollection, onCollectionPoin
                             color={getStatusColor(collection.status)}
                             size="small"
                           />
+                          {collection.points > 0 && (
+                            <Chip
+                              label={`${collection.points} pts`}
+                              color="success"
+                              size="small"
+                              variant="outlined"
+                            />
+                          )}
                         </Box>
                       }
                       secondary={
@@ -289,9 +309,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewCollection, onCollectionPoin
                           <Typography variant="body2" color="text.secondary">
                             Coletor: {collection.collectorName}
                           </Typography>
+                          {collection.trackingHistory && collection.trackingHistory.length > 0 && (
+                            <Typography variant="body2" color="text.secondary">
+                              Etapas: {collection.trackingHistory.length}
+                            </Typography>
+                          )}
                         </Box>
                       }
                     />
+                    <Box sx={{ ml: 2 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<VisibilityIcon />}
+                        onClick={() => onCollectionDetails(collection.id)}
+                      >
+                        Ver Detalhes
+                      </Button>
+                    </Box>
                   </ListItem>
                 ))}
               </List>

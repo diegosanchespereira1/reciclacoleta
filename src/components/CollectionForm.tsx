@@ -29,7 +29,10 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { DatabaseService } from '../services/database';
 import { CollectionPointService } from '../services/collectionPointService';
+import { BlockchainService } from '../services/blockchainService';
+import { PointsService } from '../services/pointsService';
 import { CollectionItem, CollectionPoint } from '../types';
+import PhotoCapture from './PhotoCapture';
 
 interface CollectionFormProps {
   onBack: () => void;
@@ -48,10 +51,20 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [photoData, setPhotoData] = useState<string | undefined>();
+  const [photoHash, setPhotoHash] = useState<string | undefined>();
+  const [trackingId, setTrackingId] = useState<string>('');
 
   useEffect(() => {
     const points = CollectionPointService.getActiveCollectionPoints();
     setCollectionPoints(points);
+    
+    // Inicializar serviços
+    BlockchainService.initialize();
+    PointsService.initialize();
+    
+    // Gerar ID de rastreamento único
+    setTrackingId(BlockchainService.generateTrackingId());
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,9 +87,12 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ onBack }) => {
 
     try {
       const selectedPoint = collectionPoints.find(p => p.id === formData.collectionPointId);
-      await DatabaseService.createCollection({
+      const weight = parseFloat(formData.weight);
+      
+      // Criar coleta com dados básicos
+      const collection = await DatabaseService.createCollection({
         type: formData.type,
-        weight: parseFloat(formData.weight),
+        weight,
         location: formData.location,
         collectionPointId: formData.collectionPointId || undefined,
         collectionPointName: selectedPoint?.name,
@@ -84,6 +100,57 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ onBack }) => {
         collectorName: user.name,
         status: formData.status
       });
+
+      // Adicionar dados de rastreamento à coleta
+      const collectionWithTracking = {
+        ...collection,
+        trackingId,
+        photoUrl: photoData,
+        photoHash,
+        points: 0,
+        trackingHistory: [] as any[]
+      };
+
+      // Calcular pontos
+      const points = PointsService.calculatePoints(collectionWithTracking);
+      collectionWithTracking.points = points;
+
+      // Criar evento de rastreamento inicial
+      const trackingEvent = {
+        id: crypto.randomUUID(),
+        collectionId: collection.id,
+        stage: 'collected' as const,
+        timestamp: new Date(),
+        location: formData.location,
+        responsiblePerson: user.name,
+        responsiblePersonId: user.id,
+        notes: `Coleta inicial registrada por ${user.name}`,
+        photoUrl: photoData,
+        photoHash,
+        weight,
+        blockchainHash: undefined as string | undefined
+      };
+
+      // Adicionar ao blockchain
+      const blockchainHash = await BlockchainService.addRecord(
+        collection.id,
+        trackingEvent.id,
+        'collected',
+        weight,
+        formData.location,
+        user.name,
+        photoHash
+      );
+
+      trackingEvent.blockchainHash = blockchainHash;
+      collectionWithTracking.blockchainHash = blockchainHash;
+      collectionWithTracking.trackingHistory = [trackingEvent];
+
+      // Adicionar pontos ao usuário
+      await PointsService.addPoints(user.id, collectionWithTracking, 'confirmed');
+
+      // Salvar coleta atualizada
+      await DatabaseService.updateCollectionWithTracking(collectionWithTracking);
 
       setSuccess(true);
       setFormData({
@@ -93,27 +160,31 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ onBack }) => {
         collectionPointId: '',
         status: 'collected'
       });
+      setPhotoData(undefined);
+      setPhotoHash(undefined);
+      setTrackingId(BlockchainService.generateTrackingId());
 
       setTimeout(() => {
         setSuccess(false);
-      }, 3000);
+      }, 5000);
     } catch (err) {
       setError('Erro ao registrar coleta');
+      console.error('Erro ao registrar coleta:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'papel': return '📄';
-      case 'plastico': return '🥤';
-      case 'vidro': return '🍾';
-      case 'metal': return '🥫';
-      case 'organico': return '🍌';
-      default: return '♻️';
-    }
+  const handlePhotoCapture = (photoData: string, photoHash: string) => {
+    setPhotoData(photoData);
+    setPhotoHash(photoHash);
   };
+
+  const handlePhotoRemove = () => {
+    setPhotoData(undefined);
+    setPhotoHash(undefined);
+  };
+
 
   const getTypeLabel = (type: string) => {
     switch (type) {
@@ -154,14 +225,37 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ onBack }) => {
             <Typography variant="h4" sx={{ color: '#2e7d32', fontWeight: 'bold', mb: 1 }}>
               ♻️ Registrar Nova Coleta
             </Typography>
-            <Typography variant="body1" color="text.secondary">
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
               Preencha as informações abaixo para registrar uma nova coleta de material reciclável
             </Typography>
+            {trackingId && (
+              <Box sx={{ 
+                backgroundColor: '#e8f5e8', 
+                p: 2, 
+                borderRadius: 2, 
+                border: '1px solid #4caf50',
+                mb: 2
+              }}>
+                <Typography variant="body2" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>
+                  🔗 ID de Rastreamento: {trackingId}
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#2e7d32' }}>
+                  Este ID será usado para rastrear o material durante todo o processo
+                </Typography>
+              </Box>
+            )}
           </Box>
 
           {success && (
             <Alert severity="success" sx={{ mb: 3 }}>
-              Coleta registrada com sucesso!
+              <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                ✅ Coleta registrada com sucesso!
+              </Typography>
+              <Typography variant="body2">
+                • Material registrado no blockchain<br/>
+                • Pontos calculados e creditados<br/>
+                • Rastreamento ativo com ID: {trackingId}
+              </Typography>
             </Alert>
           )}
 
@@ -300,6 +394,47 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ onBack }) => {
                     <MenuItem value="disposed">Descartado</MenuItem>
                   </Select>
                 </FormControl>
+
+              {/* Componente de captura de foto */}
+              <PhotoCapture
+                onPhotoCapture={handlePhotoCapture}
+                onPhotoRemove={handlePhotoRemove}
+                currentPhoto={photoData}
+                currentHash={photoHash}
+                required={false}
+                disabled={loading}
+              />
+
+              {/* Informações de pontos */}
+              {formData.weight && formData.type && (
+                <Box sx={{ 
+                  backgroundColor: '#e3f2fd', 
+                  p: 2, 
+                  borderRadius: 2, 
+                  border: '1px solid #2196f3'
+                }}>
+                  <Typography variant="subtitle2" sx={{ color: '#1976d2', fontWeight: 'bold', mb: 1 }}>
+                    🎯 Sistema de Pontos
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#1976d2' }}>
+                    Material: {getTypeLabel(formData.type)} • Peso: {formData.weight} kg<br/>
+                    Pontos a receber: {PointsService.calculatePoints({
+                      id: 'temp-id',
+                      type: formData.type,
+                      weight: parseFloat(formData.weight),
+                      collectorId: user?.id || '',
+                      collectorName: user?.name || '',
+                      collectedAt: new Date(),
+                      location: formData.location,
+                      status: formData.status,
+                      qrCode: '',
+                      trackingId: trackingId,
+                      points: 0,
+                      trackingHistory: []
+                    } as CollectionItem)} pontos
+                  </Typography>
+                </Box>
+              )}
             </Box>
 
             <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center', gap: 2 }}>

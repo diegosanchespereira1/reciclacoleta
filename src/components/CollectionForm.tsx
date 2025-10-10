@@ -87,68 +87,17 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ onBack }) => {
       const selectedPoint = collectionPoints.find(p => p.id === formData.collectionPointId);
       const weight = parseFloat(formData.weight);
       
-      // Criar coleta com dados básicos
-      const collection = await DatabaseService.createCollection({
+      // Criar coleta usando a API
+      const collectionData = {
         type: formData.type,
         weight,
         location: formData.location,
         collectionPointId: formData.collectionPointId || undefined,
         collectionPointName: selectedPoint?.name,
-        collectorId: user.id,
-        collectorName: user.name,
         status: formData.status
-      });
-
-      // Adicionar dados de rastreamento à coleta
-      const collectionWithTracking = {
-        ...collection,
-        trackingId,
-        photoUrl: photoData,
-        photoHash,
-        points: 0,
-        trackingHistory: [] as any[]
       };
 
-      // Calcular pontos
-      const points = PointsService.calculatePoints(collectionWithTracking);
-      collectionWithTracking.points = points;
-
-      // Criar evento de rastreamento inicial
-      const trackingEvent = {
-        id: crypto.randomUUID(),
-        collectionId: collection.id,
-        stage: 'collected' as const,
-        timestamp: new Date(),
-        location: formData.location,
-        responsiblePerson: user.name,
-        responsiblePersonId: user.id,
-        notes: `Coleta inicial registrada por ${user.name}`,
-        photoUrl: photoData,
-        photoHash,
-        weight,
-        blockchainHash: undefined as string | undefined
-      };
-
-      // Adicionar ao blockchain
-      const blockchainHash = await BlockchainService.addRecord(
-        collection.id,
-        trackingEvent.id,
-        'collected',
-        weight,
-        formData.location,
-        user.name,
-        photoHash
-      );
-
-      trackingEvent.blockchainHash = blockchainHash;
-      collectionWithTracking.blockchainHash = blockchainHash;
-      collectionWithTracking.trackingHistory = [trackingEvent];
-
-      // Adicionar pontos ao usuário
-      await PointsService.addPoints(user.id, collectionWithTracking, 'confirmed');
-
-      // Salvar coleta atualizada
-      await DatabaseService.updateCollectionWithTracking(collectionWithTracking);
+      const result = await ApiService.createCollection(collectionData);
 
       setSuccess(true);
       setFormData({

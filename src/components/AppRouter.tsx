@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Login from './Login';
 import Register from './Register';
 import Dashboard from './Dashboard';
-import CollectionForm from './CollectionForm';
+import CollectionForm from './CollectionFormNew';
 import CollectionPointForm from './CollectionPointForm';
 import CollectionPointsList from './CollectionPointsList';
 import Reports from './Reports';

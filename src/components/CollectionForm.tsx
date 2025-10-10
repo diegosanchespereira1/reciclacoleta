@@ -27,10 +27,7 @@ import {
   Category as CategoryIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { DatabaseService } from '../services/database';
-import { CollectionPointService } from '../services/collectionPointService';
-import { BlockchainService } from '../services/blockchainService';
-import { PointsService } from '../services/pointsService';
+import ApiService from '../services/api';
 import { CollectionItem, CollectionPoint } from '../types';
 import PhotoCapture from './PhotoCapture';
 
@@ -56,15 +53,16 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ onBack }) => {
   const [trackingId, setTrackingId] = useState<string>('');
 
   useEffect(() => {
-    const points = CollectionPointService.getActiveCollectionPoints();
-    setCollectionPoints(points);
-    
-    // Inicializar serviços
-    BlockchainService.initialize();
-    PointsService.initialize();
-    
-    // Gerar ID de rastreamento único
-    setTrackingId(BlockchainService.generateTrackingId());
+    const loadCollectionPoints = async () => {
+      try {
+        const pointsData = await ApiService.getCollectionPoints();
+        setCollectionPoints(pointsData.collectionPoints);
+      } catch (error) {
+        console.error('Erro ao carregar pontos de coleta:', error);
+      }
+    };
+
+    loadCollectionPoints();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

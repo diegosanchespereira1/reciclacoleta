@@ -32,7 +32,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { CollectionStats } from '../types';
-import { StatsService } from '../services/statsService';
+import ApiService from '../services/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -48,12 +48,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewCollection, onCollectionPoin
   const [stats, setStats] = useState<CollectionStats | null>(null);
 
   useEffect(() => {
-    if (user) {
-      const userStats = user.role === 'admin' 
-        ? StatsService.getCollectionStats()
-        : StatsService.getCollectorStats(user.id);
-      setStats(userStats);
-    }
+    const loadStats = async () => {
+      if (user) {
+        try {
+          const dashboardData = await ApiService.getDashboardData();
+          setStats(dashboardData);
+        } catch (error) {
+          console.error('Erro ao carregar estatísticas:', error);
+        }
+      }
+    };
+
+    loadStats();
   }, [user]);
 
   const getTypeIcon = (type: string) => {

@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '../types';
-import { DatabaseService } from '../services/database';
-import { CollectionPointService } from '../services/collectionPointService';
+import ApiService from '../services/api';
 
 interface AuthContextType {
   user: User | null;
@@ -30,27 +29,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize database with sample data
-    DatabaseService.initializeSampleData();
-    CollectionPointService.initializeSampleData();
-    
-    // Check for existing session
-    const savedUser = localStorage.getItem('recicla_coleta_current_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    const initAuth = async () => {
+      try {
+        // Check for existing token and verify it
+        const result = await ApiService.verifyToken();
+        if (result?.user) {
+          setUser(result.user);
+        }
+      } catch (error) {
+        console.error('Erro ao verificar token:', error);
+        ApiService.logout();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const foundUser = await DatabaseService.getUserByEmail(email);
-      if (foundUser && foundUser.password === password) {
-        setUser(foundUser);
-        localStorage.setItem('recicla_coleta_current_user', JSON.stringify(foundUser));
-        return true;
-      }
-      return false;
+      const result = await ApiService.login(email, password);
+      setUser(result.user);
+      return true;
     } catch (error) {
       console.error('Login error:', error);
       return false;
@@ -58,26 +59,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
+    ApiService.logout();
     setUser(null);
-    localStorage.removeItem('recicla_coleta_current_user');
   };
 
   const register = async (name: string, email: string, password: string, role: 'collector' | 'admin'): Promise<boolean> => {
     try {
-      const existingUser = await DatabaseService.getUserByEmail(email);
-      if (existingUser) {
-        return false; // User already exists
-      }
-
-      const newUser = await DatabaseService.createUser({
-        name,
-        email,
-        password,
-        role
-      });
-
-      setUser(newUser);
-      localStorage.setItem('recicla_coleta_current_user', JSON.stringify(newUser));
+      const result = await ApiService.register(email, password, name, role);
+      setUser(result.user);
       return true;
     } catch (error) {
       console.error('Registration error:', error);

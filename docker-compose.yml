@@ -40,8 +40,19 @@ services:
         condition: service_healthy
     networks:
       - recicla-network
+      - traefik
     volumes:
       - ./uploads:/app/uploads
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.recicla-backend.rule=Host(`appcoleta.polygonconsulting.com.br`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.recicla-backend.entrypoints=websecure"
+      - "traefik.http.routers.recicla-backend.tls=true"
+      - "traefik.http.routers.recicla-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.recicla-backend-stripprefix.stripprefix.prefixes=/api"
+      - "traefik.http.routers.recicla-backend.middlewares=recicla-backend-stripprefix"
+      - "traefik.http.services.recicla-backend.loadbalancer.server.port=3000"
 
   # Frontend (React + Nginx)
   frontend:
@@ -50,21 +61,32 @@ services:
       dockerfile: Dockerfile
     container_name: recicla-frontend
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
     environment:
       - REACT_APP_API_URL=https://appcoleta.polygonconsulting.com.br/api
     depends_on:
       - backend
     networks:
       - recicla-network
-    volumes:
-      - ./ssl:/etc/nginx/ssl:ro
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.recicla-frontend.rule=Host(`appcoleta.polygonconsulting.com.br`)"
+      - "traefik.http.routers.recicla-frontend.entrypoints=web"
+      - "traefik.http.routers.recicla-frontend.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+      - "traefik.http.routers.recicla-frontend-secure.rule=Host(`appcoleta.polygonconsulting.com.br`)"
+      - "traefik.http.routers.recicla-frontend-secure.entrypoints=websecure"
+      - "traefik.http.routers.recicla-frontend-secure.tls=true"
+      - "traefik.http.routers.recicla-frontend-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.services.recicla-frontend.loadbalancer.server.port=80"
 
 networks:
   recicla-network:
     driver: bridge
+  traefik:
+    external: true
 
 volumes:
   postgres_data:

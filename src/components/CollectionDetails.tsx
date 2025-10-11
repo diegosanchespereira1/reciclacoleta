@@ -40,8 +40,7 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CollectionItem, TrackingEvent } from '../types';
-import { DatabaseService } from '../services/database';
-import { BlockchainService } from '../services/blockchainService';
+import ApiService from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import PhotoCapture from './PhotoCapture';
 
@@ -70,24 +69,17 @@ const CollectionDetails: React.FC<CollectionDetailsProps> = ({ collectionId, onB
   const loadCollectionDetails = async () => {
     try {
       setLoading(true);
-      const collections = await DatabaseService.getCollections();
-      const foundCollection = collections.find(c => c.id === collectionId);
+      const result = await ApiService.authenticatedRequest(`/collections/${collectionId}`);
       
-      if (!foundCollection) {
+      if (result.ok) {
+        const data = await result.json();
+        setCollection(data.collection);
+      } else {
         setError('Coleta não encontrada.');
-        return;
       }
-
-      // Verificar se o usuário tem permissão para ver esta coleta
-      if (user?.role === 'collector' && foundCollection.collectorId !== user.id) {
-        setError('Você não tem permissão para visualizar esta coleta.');
-        return;
-      }
-
-      setCollection(foundCollection);
-    } catch (err) {
+    } catch (error) {
       setError('Erro ao carregar detalhes da coleta.');
-      console.error('Erro ao carregar coleta:', err);
+      console.error('Erro ao carregar coleta:', error);
     } finally {
       setLoading(false);
     }
@@ -128,47 +120,28 @@ const CollectionDetails: React.FC<CollectionDetailsProps> = ({ collectionId, onB
     try {
       setProcessing(true);
 
-      // Criar novo evento de rastreamento
-      const newEvent: TrackingEvent = {
-        id: crypto.randomUUID(),
-        collectionId: collection.id,
-        stage: selectedStage as any,
-        timestamp: new Date(),
-        location: stageLocation,
-        responsiblePerson: user.name,
-        responsiblePersonId: user.id,
-        notes: stageNotes,
-        photoUrl: stagePhotoData,
-        photoHash: stagePhotoHash,
-        weight: collection.weight,
-        blockchainHash: undefined
-      };
-
-      // Adicionar ao blockchain
-      const blockchainHash = await BlockchainService.addRecord(
-        collection.id,
-        newEvent.id,
-        selectedStage,
-        collection.weight,
-        stageLocation,
-        user.name,
-        stagePhotoHash
+      const result = await ApiService.authenticatedRequest(
+        `/collections/${collectionId}/tracking`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            stage: selectedStage,
+            location: stageLocation,
+            notes: stageNotes,
+            photoUrl: stagePhotoData,
+            photoHash: stagePhotoHash
+          })
+        }
       );
 
-      newEvent.blockchainHash = blockchainHash;
-
-      // Atualizar coleta
-      const updatedCollection = {
-        ...collection,
-        status: (selectedStage === 'completed' ? 'processed' : 'collected') as 'collected' | 'processed' | 'disposed',
-        trackingHistory: [...collection.trackingHistory, newEvent]
-      };
-
-      await DatabaseService.updateCollectionWithTracking(updatedCollection);
-      setCollection(updatedCollection);
-      setNextStageDialog(false);
-    } catch (err) {
-      console.error('Erro ao avançar etapa:', err);
+      if (result.ok) {
+        await loadCollectionDetails();
+        setNextStageDialog(false);
+      } else {
+        setError('Erro ao avançar etapa da coleta.');
+      }
+    } catch (error) {
+      console.error('Erro ao avançar etapa:', error);
       setError('Erro ao avançar etapa da coleta.');
     } finally {
       setProcessing(false);
@@ -177,7 +150,12 @@ const CollectionDetails: React.FC<CollectionDetailsProps> = ({ collectionId, onB
 
   const validateBlockchain = async (hash: string) => {
     try {
-      return await BlockchainService.validateRecord(hash);
+      const result = await ApiService.authenticatedRequest(`/blockchain/validate/${hash}`);
+      if (result.ok) {
+        const data = await result.json();
+        return data.valid;
+      }
+      return false;
     } catch (err) {
       console.error('Erro ao validar blockchain:', err);
       return false;

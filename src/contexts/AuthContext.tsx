@@ -34,7 +34,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Check for existing token and verify it
         const result = await ApiService.verifyToken();
         if (result?.user) {
-          setUser(result.user);
+          // Garantir que o role seja do tipo correto e createdAt seja Date
+          const user = {
+            ...result.user,
+            role: result.user.role as 'collector' | 'admin',
+            createdAt: new Date(result.user.createdAt)
+          };
+          setUser(user);
         }
       } catch (error) {
         console.error('Erro ao verificar token:', error);
@@ -50,7 +56,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const result = await ApiService.login(email, password);
-      setUser(result.user);
+      const user = {
+        ...result.user,
+        role: result.user.role as 'collector' | 'admin',
+        createdAt: new Date(result.user.createdAt)
+      };
+      setUser(user);
       return true;
     } catch (error) {
       console.error('Login error:', error);
@@ -66,7 +77,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (name: string, email: string, password: string, role: 'collector' | 'admin'): Promise<boolean> => {
     try {
       const result = await ApiService.register(email, password, name, role);
-      setUser(result.user);
+      const user = {
+        ...result.user,
+        role: result.user.role as 'collector' | 'admin',
+        createdAt: new Date(result.user.createdAt)
+      };
+      setUser(user);
       return true;
     } catch (error) {
       console.error('Registration error:', error);

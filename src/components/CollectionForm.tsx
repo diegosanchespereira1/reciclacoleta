@@ -109,7 +109,6 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ onBack }) => {
       });
       setPhotoData(undefined);
       setPhotoHash(undefined);
-      setTrackingId(BlockchainService.generateTrackingId());
 
       setTimeout(() => {
         setSuccess(false);
@@ -306,7 +305,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ onBack }) => {
                   value={formData.weight}
                   onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                   disabled={loading}
-                  inputProps={{ min: 0.1, step: 0.1 }}
+                  inputProps={{ min: "0.1", step: "0.1" }}
                 />
               </Box>
 
@@ -365,20 +364,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ onBack }) => {
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#1976d2' }}>
                     Material: {getTypeLabel(formData.type)} • Peso: {formData.weight} kg<br/>
-                    Pontos a receber: {PointsService.calculatePoints({
-                      id: 'temp-id',
-                      type: formData.type,
-                      weight: parseFloat(formData.weight),
-                      collectorId: user?.id || '',
-                      collectorName: user?.name || '',
-                      collectedAt: new Date(),
-                      location: formData.location,
-                      status: formData.status,
-                      qrCode: '',
-                      trackingId: trackingId,
-                      points: 0,
-                      trackingHistory: []
-                    } as CollectionItem)} pontos
+                    Pontos a receber: Serão calculados automaticamente pelo sistema
                   </Typography>
                 </Box>
               )}

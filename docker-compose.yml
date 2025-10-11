@@ -59,8 +59,10 @@ services:
       dockerfile: Dockerfile
     container_name: recicla-frontend
     restart: unless-stopped
+    ports:
+      - "3001:80"
     environment:
-      - REACT_APP_API_URL=https://appcoleta.polygonconsulting.com.br/api
+      - REACT_APP_API_URL=http://178.18.242.252:3002/api
     depends_on:
       - backend
     networks:

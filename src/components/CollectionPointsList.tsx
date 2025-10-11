@@ -32,7 +32,7 @@ import {
   Delete as DeleteIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { CollectionPointService } from '../services/collectionPointService';
+import ApiService from '../services/api';
 import { CollectionPoint } from '../types';
 
 interface CollectionPointsListProps {
@@ -50,10 +50,10 @@ const CollectionPointsList: React.FC<CollectionPointsListProps> = ({ onBack, onN
     loadPoints();
   }, []);
 
-  const loadPoints = () => {
+  const loadPoints = async () => {
     try {
-      const allPoints = CollectionPointService.getCollectionPoints();
-      setPoints(allPoints);
+      const data = await ApiService.getCollectionPoints();
+      setPoints(data.collectionPoints);
     } catch (err) {
       setError('Erro ao carregar pontos de coleta');
     } finally {
@@ -63,7 +63,7 @@ const CollectionPointsList: React.FC<CollectionPointsListProps> = ({ onBack, onN
 
   const handleToggleActive = async (pointId: string, isActive: boolean) => {
     try {
-      await CollectionPointService.updateCollectionPoint(pointId, { isActive });
+      await ApiService.updateCollectionPoint(pointId, { isActive });
       loadPoints();
     } catch (err) {
       setError('Erro ao atualizar status do ponto');
@@ -73,7 +73,7 @@ const CollectionPointsList: React.FC<CollectionPointsListProps> = ({ onBack, onN
   const handleDelete = async (pointId: string) => {
     if (window.confirm('Tem certeza que deseja excluir este ponto de coleta?')) {
       try {
-        await CollectionPointService.deleteCollectionPoint(pointId);
+        await ApiService.deleteCollectionPoint(pointId);
         loadPoints();
       } catch (err) {
         setError('Erro ao excluir ponto de coleta');

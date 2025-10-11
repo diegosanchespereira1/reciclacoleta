@@ -27,7 +27,7 @@ import {
   Business as BusinessIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { CollectionPointService } from '../services/collectionPointService';
+import ApiService from '../services/api';
 
 interface CollectionPointFormProps {
   onBack: () => void;
@@ -78,7 +78,7 @@ const CollectionPointForm: React.FC<CollectionPointFormProps> = ({ onBack }) => 
     }
 
     try {
-      await CollectionPointService.createCollectionPoint(formData);
+      await ApiService.createCollectionPoint(formData);
 
       setSuccess(true);
       setFormData({
@@ -106,16 +106,8 @@ const CollectionPointForm: React.FC<CollectionPointFormProps> = ({ onBack }) => 
     setError('');
 
     try {
-      const location = await CollectionPointService.getCurrentLocation();
-      if (location) {
-        setFormData(prev => ({
-          ...prev,
-          address: location.address,
-          city: location.city
-        }));
-      } else {
-        setError('Não foi possível obter a localização. Verifique se o GPS está ativado.');
-      }
+      // Função de geolocalização removida - usar input manual
+      setError('Função de geolocalização não disponível. Por favor, preencha o endereço manualmente.');
     } catch (err) {
       setError('Erro ao obter localização');
     } finally {

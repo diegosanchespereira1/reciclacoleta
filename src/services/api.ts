@@ -1,3 +1,5 @@
+import { CollectionItem, CollectionPoint, User, CollectionStats, ReportData, TrackingEvent } from '../types';
+
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
 
 interface LoginResponse {
@@ -115,13 +117,13 @@ class ApiService {
 
   // Métodos para fazer requisições autenticadas
   async authenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
-    const headers = {
+    const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
     };
 
     if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${this.token}`;
     }
 
     const response = await fetch(`${API_BASE_URL}${url}`, {
@@ -183,16 +185,6 @@ class ApiService {
     return response.json();
   }
 
-  async createCollectionPoint(pointData: any): Promise<any> {
-    const response = await this.authenticatedRequest('/collection-points', {
-      method: 'POST',
-      body: JSON.stringify(pointData),
-    });
-    if (!response.ok) {
-      throw new Error('Erro ao criar ponto de coleta');
-    }
-    return response.json();
-  }
 
   // Métodos para relatórios
   async getReportData(filters: any = {}): Promise<any> {
@@ -211,6 +203,31 @@ class ApiService {
       throw new Error('Erro ao buscar dados do dashboard');
     }
     return response.json();
+  }
+
+  async createCollectionPoint(pointData: any): Promise<CollectionPoint> {
+    const response = await this.authenticatedRequest('/collection-points', {
+      method: 'POST',
+      body: JSON.stringify(pointData)
+    });
+    if (!response.ok) throw new Error('Failed to create collection point');
+    return response.json();
+  }
+
+  async updateCollectionPoint(pointId: string, pointData: any): Promise<CollectionPoint> {
+    const response = await this.authenticatedRequest(`/collection-points/${pointId}`, {
+      method: 'PUT',
+      body: JSON.stringify(pointData)
+    });
+    if (!response.ok) throw new Error('Failed to update collection point');
+    return response.json();
+  }
+
+  async deleteCollectionPoint(pointId: string): Promise<void> {
+    const response = await this.authenticatedRequest(`/collection-points/${pointId}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete collection point');
   }
 }
 

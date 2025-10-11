@@ -224,10 +224,10 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ onBack }) => {
                 fullWidth
                 label="Peso (kg)"
                 type="number"
-                step="0.1"
                 value={formData.weight}
-                onChange={(e) => handleInputChange('weight', e.target.value)}
+                onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                 required
+                inputProps={{ min: "0.1", step: "0.1" }}
                 InputProps={{
                   startAdornment: <ScaleIcon sx={{ mr: 1, color: 'text.secondary' }} />
                 }}

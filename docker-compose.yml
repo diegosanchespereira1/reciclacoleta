@@ -34,7 +34,7 @@ services:
       - DATABASE_URL=postgresql://recicla_user:recicla_pass_2024@postgres:5432/recicla_db
       - JWT_SECRET=seu_jwt_secret_super_seguro_aqui_mude_em_producao
       - PORT=3000
-      - FRONTEND_URL=http://appcoleta.polygonconsulting.com.br
+      - FRONTEND_URL=https://appcoleta.polygonconsulting.com.br
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,13 +51,16 @@ services:
     container_name: recicla-frontend
     restart: unless-stopped
     ports:
-      - "3001:80"
+      - "80:80"
+      - "443:443"
     environment:
-      - REACT_APP_API_URL=http://appcoleta.polygonconsulting.com.br/api
+      - REACT_APP_API_URL=https://appcoleta.polygonconsulting.com.br/api
     depends_on:
       - backend
     networks:
       - recicla-network
+    volumes:
+      - ./ssl:/etc/nginx/ssl:ro
 
 networks:
   recicla-network:

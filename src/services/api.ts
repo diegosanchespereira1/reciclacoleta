@@ -1,6 +1,6 @@
 import { CollectionItem, CollectionPoint, User, CollectionStats, ReportData, TrackingEvent } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://178.18.242.252:3002/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://178.18.242.252:3002';
 
 interface LoginResponse {
   message: string;

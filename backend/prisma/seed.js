@@ -6,6 +6,22 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Iniciando seed do banco de dados...');
 
+  // Verificar se já existem dados
+  const existingUsers = await prisma.user.count();
+  const existingCollections = await prisma.collectionItem.count();
+
+  if (existingUsers > 0 || existingCollections > 0) {
+    console.log('ℹ️  Banco de dados já contém dados.');
+    console.log(`   Usuários: ${existingUsers}`);
+    console.log(`   Coletas: ${existingCollections}`);
+    console.log('⏭️  Pulando seed para evitar duplicação.');
+    console.log('💡 Dica: Para recriar os dados, execute:');
+    console.log('   docker exec recicla-backend npx prisma migrate reset');
+    return;
+  }
+
+  console.log('📝 Banco de dados vazio. Criando dados iniciais...');
+
   // Limpar dados existentes (opcional - comentar em produção)
   // await prisma.pointsTransaction.deleteMany();
   // await prisma.trackingEvent.deleteMany();

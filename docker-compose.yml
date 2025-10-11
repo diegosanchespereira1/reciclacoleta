@@ -62,7 +62,7 @@ services:
     ports:
       - "3001:80"
     environment:
-      - REACT_APP_API_URL=http://178.18.242.252:3002/api
+        - REACT_APP_API_URL=http://178.18.242.252:3002
     depends_on:
       - backend
     networks:

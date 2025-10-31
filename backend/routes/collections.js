@@ -384,6 +384,95 @@ router.post('/:id/tracking', authenticateToken, async (req, res) => {
   }
 });
 
+// Approve collection - change status from awaiting_approval to completed
+router.post('/:id/approve', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, role } = req.user;
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: 'ID de coleta inválido' });
+    }
+
+    // Only admins can approve collections
+    if (role !== 'admin') {
+      return res.status(403).json({ error: 'Apenas administradores podem aprovar coletas' });
+    }
+
+    // Verificar se a coleta existe
+    const collection = await prisma.collectionItem.findUnique({
+      where: { id }
+    });
+
+    if (!collection) {
+      return res.status(404).json({ error: 'Coleta não encontrada' });
+    }
+
+    // Verificar se a coleta está aguardando aprovação
+    if (collection.status !== 'awaiting_approval') {
+      return res.status(400).json({ 
+        error: 'Coleta não está aguardando aprovação',
+        currentStatus: collection.status
+      });
+    }
+
+    // Atualizar status para completed
+    // O trigger auto_credit_on_completion será executado automaticamente
+    const updatedCollection = await prisma.collectionItem.update({
+      where: { id },
+      data: {
+        status: 'completed',
+        updatedAt: new Date()
+      },
+      include: {
+        collector: {
+          select: { id: true, name: true, email: true }
+        },
+        collectionPoint: {
+          select: { id: true, name: true, address: true }
+        },
+        trackingHistory: {
+          orderBy: { timestamp: 'desc' }
+        }
+      }
+    });
+
+    // Buscar pontos atualizados do usuário
+    const userPoints = await prisma.userPoints.findUnique({
+      where: { userId: collection.collectorId }
+    });
+
+    // Criar evento de tracking para a aprovação
+    await prisma.trackingEvent.create({
+      data: {
+        collectionId: id,
+        stage: 'completed',
+        location: collection.location,
+        responsiblePerson: req.user.name || 'Administrador',
+        responsiblePersonId: userId,
+        notes: `Coleta aprovada e concluída. Crédito de ${collection.points} pontos concedido automaticamente.`,
+        weight: collection.weight
+      }
+    });
+
+    res.json({
+      message: 'Coleta aprovada com sucesso',
+      collection: updatedCollection,
+      pointsGranted: collection.points,
+      userTotalPoints: userPoints?.totalPoints || 0
+    });
+
+  } catch (error) {
+    console.error('Erro ao aprovar coleta:', error);
+    // Don't expose internal error details to client
+    res.status(500).json({ 
+      error: 'Erro interno do servidor'
+    });
+  }
+});
+
 // Helper function to determine user level based on points
 function getLevelFromPoints(points) {
   if (points >= 10000) return 'Lenda Verde';

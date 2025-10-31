@@ -8,12 +8,26 @@ RETURNS TRIGGER AS $$
 BEGIN
   -- Check if status changed to 'completed'
   IF NEW.status = 'completed' AND OLD.status != 'completed' THEN
-    -- Update user points
-    UPDATE user_points
-    SET 
-      total_points = total_points + NEW.points,
-      updated_at = NOW()
-    WHERE user_id = NEW.collector_id;
+    -- Update or create user points record
+    INSERT INTO user_points (
+      id,
+      user_id,
+      total_points,
+      level,
+      created_at,
+      updated_at
+    ) VALUES (
+      gen_random_uuid(),
+      NEW.collector_id,
+      NEW.points,
+      'Iniciante',
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT (user_id) 
+    DO UPDATE SET
+      total_points = user_points.total_points + NEW.points,
+      updated_at = NOW();
     
     -- Create points transaction record with hash
     INSERT INTO points_transactions (

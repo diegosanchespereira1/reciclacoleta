@@ -8,7 +8,7 @@ RETURNS TRIGGER AS $$
 BEGIN
   -- Check if status changed to 'completed'
   IF NEW.status = 'completed' AND OLD.status != 'completed' THEN
-    -- Update or create user points record
+    -- Update or create user points record with proper locking to prevent race conditions
     INSERT INTO user_points (
       id,
       user_id,
@@ -26,7 +26,7 @@ BEGIN
     )
     ON CONFLICT (user_id) 
     DO UPDATE SET
-      total_points = user_points.total_points + NEW.points,
+      total_points = user_points.total_points + EXCLUDED.total_points,
       updated_at = NOW();
     
     -- Create points transaction record with hash
@@ -50,11 +50,12 @@ BEGIN
     
     -- Optional: Create a verification hash using digest with explicit type casting
     -- This demonstrates the fix for the digest error
+    -- Note: Using structured format with delimiters to prevent hash collisions
     UPDATE collection_items
     SET 
       blockchain_hash = encode(
         digest(
-          (NEW.id || NEW.collector_id || NEW.weight::text || NEW.type || NOW()::text)::bytea,
+          ('collection:' || NEW.id || '|collector:' || NEW.collector_id || '|weight:' || NEW.weight::text || '|type:' || NEW.type || '|timestamp:' || NOW()::text)::bytea,
           'sha256'::text  -- Explicit cast to text to avoid "function digest(bytea, unknown) does not exist" error
         ),
         'hex'

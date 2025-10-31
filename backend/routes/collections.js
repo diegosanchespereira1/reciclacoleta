@@ -390,6 +390,12 @@ router.post('/:id/approve', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { userId, role } = req.user;
 
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: 'ID de coleta inválido' });
+    }
+
     // Only admins can approve collections
     if (role !== 'admin') {
       return res.status(403).json({ error: 'Apenas administradores podem aprovar coletas' });
@@ -460,9 +466,9 @@ router.post('/:id/approve', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Erro ao aprovar coleta:', error);
+    // Don't expose internal error details to client
     res.status(500).json({ 
-      error: 'Erro interno do servidor',
-      details: error.message
+      error: 'Erro interno do servidor'
     });
   }
 });

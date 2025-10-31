@@ -46,7 +46,7 @@ model CollectionItem {
   collectorId          String
   collectorName        String
   collectedAt          DateTime @default(now())
-  status               String   // 'collected', 'processed', 'disposed'
+  status               String   // 'collected', 'processing', 'awaiting_approval', 'completed', 'processed', 'disposed'
   qrCode               String   @unique
   trackingId           String   @unique
   photoUrl             String?
